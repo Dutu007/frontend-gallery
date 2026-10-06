@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bubble Orbit · 玻璃气泡物理原型</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #eef7ff;
+      --muted: #9fb4cf;
+      --line: rgba(170, 210, 255, .16);
+      --panel: rgba(12, 28, 55, .62);
+      --panel-strong: rgba(10, 24, 48, .82);
+      --cyan: #6de8ff;
+      --violet: #a888ff;
+      --mint: #89f8cf;
+      --coral: #ff9ea9;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 13% 15%, rgba(67, 144, 255, .24), transparent 28rem),
+        radial-gradient(circle at 82% 20%, rgba(175, 98, 255, .18), transparent 25rem),
+        radial-gradient(circle at 50% 110%, rgba(20, 222, 194, .12), transparent 34rem),
+        #061326;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .24;
+      background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, black, transparent 80%);
+    }
+
+    .page {
+      position: relative;
+      width: min(1440px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: clamp(22px, 4vw, 52px) clamp(18px, 5vw, 76px) 36px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: clamp(24px, 4vw, 48px);
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 14px;
+      color: var(--cyan);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 25px;
+      height: 1px;
+      background: var(--cyan);
+      box-shadow: 0 0 14px var(--cyan);
+    }
+
+    h1 {
+      max-width: 680px;
+      margin: 0;
+      font-size: clamp(32px, 5vw, 68px);
+      line-height: .98;
+      letter-spacing: -.06em;
+      font-weight: 650;
+    }
+
+    h1 span {
+      display: block;
+      color: transparent;
+      background: linear-gradient(105deg, #fff 12%, #7deaff 50%, #bca1ff 92%);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .intro {
+      max-width: 590px;
+      margin: 19px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 13px;
+      border: 1px solid var(--line);
+      border-radius: 99px;
+      color: #c4d7ed;
+      background: rgba(14, 34, 63, .6);
+      box-shadow: inset 0 1px rgba(255,255,255,.08), 0 10px 36px rgba(0,0,0,.16);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--mint);
+      box-shadow: 0 0 13px var(--mint);
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(250px, 0.72fr) minmax(360px, 1.5fr);
+      align-items: center;
+      gap: clamp(28px, 6vw, 98px);
+    }
+
+    .copy { max-width: 360px; }
+
+    .copy h2 {
+      margin: 0 0 14px;
+      font-size: clamp(18px, 2vw, 24px);
+      font-weight: 600;
+      letter-spacing: -.03em;
+    }
+
+    .copy p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .legend {
+      display: grid;
+      gap: 13px;
+      margin: 29px 0 30px;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 10px;
+      align-items: center;
+      color: #c7d8ed;
+      font-size: 12px;
+    }
+
+    .legend-icon {
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(180, 223, 255, .46);
+      border-radius: 50%;
+      color: var(--cyan);
+      font-size: 11px;
+      background: linear-gradient(145deg, rgba(120, 227, 255, .25), rgba(101, 133, 255, .07));
+      box-shadow: inset 0 1px 5px rgba(255,255,255,.15), 0 0 12px rgba(88, 214, 255, .12);
+    }
+
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    button {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 11px 14px;
+      color: #dcecff;
+      background: rgba(21, 43, 77, .64);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(145, 224, 255, .54);
+      background: rgba(31, 63, 105, .8);
+      box-shadow: 0 8px 22px rgba(0,0,0,.16);
+    }
+
+    button.primary {
+      color: #041826;
+      border-color: transparent;
+      background: linear-gradient(135deg, #8ceeff, #9fc6ff);
+      box-shadow: 0 8px 26px rgba(84, 214, 255, .18);
+      font-weight: 750;
+    }
+
+    .tip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+      color: #7089a7;
+      font-size: 11px;
+    }
+
+    .tip kbd {
+      padding: 3px 6px;
+      border: 1px solid rgba(180,210,240,.2);
+      border-radius: 5px;
+      color: #b9cbe0;
+      background: rgba(255,255,255,.06);
+      font-size: 10px;
+    }
+
+    .stage {
+      display: grid;
+      justify-items: center;
+      min-width: 0;
+    }
+
+    .stage-meta {
+      display: flex;
+      width: min(100%, 760px);
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 13px;
+      color: #8da8c6;
+      font-size: 11px;
+      letter-spacing: .04em;
+    }
+
+    .stage-meta strong { color: #d9eaff; font-weight: 600; }
+
+    .arena-wrap {
+      position: relative;
+      width: min(100%, 760px, calc(100vh - 190px));
+      min-width: 320px;
+      aspect-ratio: 1;
+      padding: 8px;
+      border: 1px solid rgba(173, 218, 255, .35);
+      border-radius: 28px;
+      background: linear-gradient(145deg, rgba(130, 215, 255, .17), rgba(83, 69, 172, .12) 44%, rgba(55, 242, 194, .08));
+      box-shadow: 0 30px 80px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.17), 0 0 0 1px rgba(77, 190, 255, .06), 0 0 90px rgba(85, 147, 255, .13);
+    }
+
+    .arena-wrap::before, .arena-wrap::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      border-radius: inherit;
+    }
+
+    .arena-wrap::before {
+      inset: 20px;
+      border: 1px solid rgba(183, 227, 255, .09);
+    }
+
+    .arena-wrap::after {
+      inset: -9px;
+      opacity: .5;
+      background: radial-gradient(circle at 50% 0, rgba(119, 221, 255, .24), transparent 40%);
+      filter: blur(18px);
+      z-index: -1;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 21px;
+      touch-action: none;
+      cursor: grab;
+      background: rgba(5, 20, 40, .66);
+    }
+
+    canvas.is-dragging { cursor: grabbing; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: min(100%, 760px);
+      margin-top: 13px;
+    }
+
+    .metric {
+      padding: 12px 14px;
+      border: 1px solid rgba(173, 218, 255, .13);
+      border-radius: 13px;
+      background: rgba(11, 30, 57, .53);
+    }
+
+    .metric span {
+      display: block;
+      margin-bottom: 5px;
+      color: #7590ae;
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .metric strong { color: #e6f4ff; font-size: 15px; font-weight: 600; }
+
+    @media (max-width: 880px) {
+      header { margin-bottom: 30px; }
+      .content { grid-template-columns: 1fr; }
+      .copy { max-width: 680px; }
+      .stage { order: -1; }
+      .arena-wrap { width: min(100%, 680px, calc(100vh - 150px)); }
+    }
+
+    @media (max-width: 540px) {
+      .page { padding-inline: 14px; }
+      header { display: block; }
+      .status-pill { margin-top: 20px; }
+      .arena-wrap { min-width: 0; border-radius: 20px; padding: 5px; }
+      canvas { border-radius: 15px; }
+      .metrics { gap: 5px; }
+      .metric { padding: 10px 9px; }
+      .metric strong { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <p class="eyebrow">Interactive physics playground</p>
+        <h1>玻璃气泡<span>自由漂浮，彼此弹开。</span></h1>
+        <p class="intro">一个面向触控和桌面的气泡物理原型。拖动任意气泡，观察它们在自适应方框内慢速漂移、碰撞、形变并恢复。</p>
+      </div>
+      <div class="status-pill"><i class="status-dot"></i><span id="statusText">LIVE SIMULATION</span></div>
+    </header>
+
+    <main class="content">
+      <section class="copy" aria-label="说明">
+        <h2>Lightweight motion, soft collisions.</h2>
+        <p>每个气泡都拥有自己的速度和色彩。碰到容器边缘或另一个气泡时，它会产生轻微椭圆形变，随后回到圆形。</p>
+        <div class="legend">
+          <div class="legend-row"><span class="legend-icon">↗</span><span>拖动气泡，松手时会带有投掷速度</span></div>
+          <div class="legend-row"><span class="legend-icon">◌</span><span>气泡互相排斥，始终保持不重叠</span></div>
+          <div class="legend-row"><span class="legend-icon">⌁</span><span>玻璃高光、内阴影和边缘折射感</span></div>
+        </div>
+        <div class="controls">
+          <button class="primary" id="addBubble">＋ 添加气泡</button>
+          <button id="toggleMotion">暂停</button>
+          <button id="reset">重置</button>
+        </div>
+        <div class="tip"><kbd>SPACE</kbd> 暂停 / 继续 <span>·</span> <kbd>R</kbd> 重置位置</div>
+      </section>
+
+      <section class="stage" aria-label="气泡物理容器">
+        <div class="stage-meta"><span>RESPONSIVE CONTAINER</span><strong id="sizeText">000 × 000</strong></div>
+        <div class="arena-wrap" id="arenaWrap">
+          <canvas id="canvas" aria-label="可拖动的玻璃气泡物理场景"></canvas>
+        </div>
+        <div class="metrics">
+          <div class="metric"><span>bubbles</span><strong id="countText">06 objects</strong></div>
+          <div class="metric"><span>motion</span><strong id="speedText">slow drift</strong></div>
+          <div class="metric"><span>collision</span><strong id="collisionText">elastic + soft</strong></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const wrap = document.getElementById('arenaWrap');
+      const sizeText = document.getElementById('sizeText');
+      const countText = document.getElementById('countText');
+      const speedText = document.getElementById('speedText');
+      const statusText = document.getElementById('statusText');
+      const toggleMotion = document.getElementById('toggleMotion');
+      const addBubble = document.getElementById('addBubble');
+      const resetButton = document.getElementById('reset');
+
+      const palettes = [
+        { edge: '#78e7ff', core: '#2b86e8', fill: 'rgba(43, 134, 232, .34)', glow: 'rgba(91, 220, 255, .6)' },
+        { edge: '#c4a6ff', core: '#764de2', fill: 'rgba(118, 77, 226, .34)', glow: 'rgba(157, 122, 255, .55)' },
+        { edge: '#96f4d4', core: '#1cafa1', fill: 'rgba(28, 175, 161, .34)', glow: 'rgba(89, 242, 202, .52)' },
+        { edge: '#ffd2a0', core: '#e27871', fill: 'rgba(226, 120, 113, .34)', glow: 'rgba(255, 168, 140, .48)' },
+        { edge: '#a9c6ff', core: '#436ed3', fill: 'rgba(67, 110, 211, .34)', glow: 'rgba(124, 169, 255, .52)' },
+        { edge: '#f4b1e7', core: '#bb5ab8', fill: 'rgba(187, 90, 184, .34)', glow: 'rgba(245, 148, 221, .5)' },
+        { edge: '#b0ffe9', core: '#42b97c', fill: 'rgba(66, 185, 124, .34)', glow: 'rgba(94, 238, 173, .5)' },
+        { edge: '#ffd0f2', core: '#dd6c9f', fill: 'rgba(221, 108, 159, .34)', glow: 'rgba(255, 169, 221, .5)' }
+      ];
+
+      const gameNames = ['贪吃蛇', '2048', '奶龙消消乐'];
+      const gameSizeScale = {
+        '贪吃蛇': 1.00,
+        '2048': .82,
+        '奶龙消消乐': 1.18
+      };
+
+      const seeds = [
+        [.20, .23, .88, .50, 0], [.53, .19, -.56, .72, 1], [.78, .34, -.72, -.35, 2],
+        [.27, .58, .64, -.60, 3], [.63, .67, .38, .68, 4], [.44, .86, -.72, -.40, 5]
+      ];
+
+      let width = 0;
+      let height = 0;
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+      let bubbles = [];
+      let paused = false;
+      let dragging = null;
+      let pointer = { x: 0, y: 0, lastX: 0, lastY: 0, lastTime: 0 };
+      let collisionPulse = 0;
+      let lastFrame = performance.now();
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const random = (min, max) => min + Math.random() * (max - min);
+      const backgroundImages = new Map();
+
+      // Optional image hook. Pass a game name to affect all matching bubbles,
+      // or a zero-based bubble index to affect one bubble only. An empty source
+      // clears the image and returns that bubble to its default pure-color fill.
+      function getTargetBubbles(target) {
+        if (typeof target === 'number') return bubbles[target] ? [bubbles[target]] : [];
+        if (typeof target === 'string') return bubbles.filter(bubble => bubble.label === target);
+        return [];
+      }
+
+      function setBubbleBackground(target, source) {
+        const targets = getTargetBubbles(target);
+        if (!targets.length) return false;
+        const isGameName = typeof target === 'string';
+        if (!source) {
+          if (isGameName) backgroundImages.delete(target);
+          targets.forEach(bubble => { bubble.backgroundImage = null; });
+          draw();
+          return true;
+        }
+
+        const image = source instanceof HTMLImageElement ? source : new Image();
+        const applyImage = () => {
+          if (isGameName) backgroundImages.set(target, image);
+          targets.forEach(bubble => { bubble.backgroundImage = image; });
+          draw();
+        };
+        image.addEventListener('load', applyImage, { once: true });
+        image.addEventListener('error', () => {
+          targets.forEach(bubble => { bubble.backgroundImage = null; });
+          draw();
+        }, { once: true });
+        if (source instanceof HTMLImageElement) {
+          if (image.complete && image.naturalWidth > 0) applyImage();
+        } else {
+          image.decoding = 'async';
+          image.src = source;
+        }
+        return true;
+      }
+
+      function clearBubbleBackground(target) {
+        return setBubbleBackground(target, null);
+      }
+
+      window.BubbleOrbit = { setBubbleBackground, clearBubbleBackground };
+
+      function radiusForBoard() {
+        return clamp(width * .095, 25, 72);
+      }
+
+      function makeBubble(x, y, vx, vy, paletteIndex, radiusScale = random(.84, 1.08)) {
+        const label = gameNames[paletteIndex % gameNames.length];
+        const sizeScale = gameSizeScale[label];
+        const r = radiusForBoard() * sizeScale * radiusScale;
+        const speed = Math.max(width * .032, 18);
+        const magnitude = Math.hypot(vx, vy) || 1;
+        return {
+          x, y, vx: (vx / magnitude) * speed * random(.72, 1.05), vy: (vy / magnitude) * speed * random(.72, 1.05),
+          r, baseR: r, palette: palettes[paletteIndex % palettes.length], paletteIndex,
+          label, sizeScale, backgroundImage: backgroundImages.get(label) || null,
+          squash: 0, squashAngle: 0, highlightShift: random(-.07, .07), phase: random(0, Math.PI * 2)
+        };
+      }
+
+      function seedBubbles() {
+        bubbles = seeds.map(([x, y, vx, vy, color]) => makeBubble(x * width, y * height, vx, vy, color));
+        // Resolve any seed placement overlap while retaining the intentional composition.
+        for (let pass = 0; pass < 5; pass++) {
+          for (let i = 0; i < bubbles.length; i++) {
+            for (let j = i + 1; j < bubbles.length; j++) separateBubbles(bubbles[i], bubbles[j], true);
+          }
+        }
+        updateMetrics();
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const oldWidth = width || rect.width;
+        width = Math.max(1, rect.width);
+        height = Math.max(1, rect.height);
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        if (!bubbles.length) {
+          seedBubbles();
+        } else {
+          const ratio = width / oldWidth;
+          for (const bubble of bubbles) {
+            bubble.x *= ratio;
+            bubble.y *= ratio;
+            bubble.r = clamp(bubble.r * ratio, radiusForBoard() * bubble.sizeScale * .76, radiusForBoard() * bubble.sizeScale * 1.16);
+            bubble.baseR = bubble.r;
+          }
+        }
+        sizeText.textContent = `${Math.round(width)} × ${Math.round(height)}`;
+        draw();
+      }
+
+      function setSquash(bubble, angle, amount = .92) {
+        bubble.squash = Math.max(bubble.squash, amount);
+        bubble.squashAngle = angle;
+        collisionPulse = Math.min(1, collisionPulse + .12);
+      }
+
+      function separateBubbles(a, b, seedOnly = false) {
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let dist = Math.hypot(dx, dy);
+        if (!dist) { dx = 1; dy = 0; dist = 1; }
+        const minDist = a.r + b.r;
+        if (dist >= minDist) return;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const overlap = minDist - dist;
+        const total = a.r + b.r;
+        const aShare = b.r / total;
+        const bShare = a.r / total;
+        a.x -= nx * overlap * aShare;
+        a.y -= ny * overlap * aShare;
+        b.x += nx * overlap * bShare;
+        b.y += ny * overlap * bShare;
+
+        if (!seedOnly) {
+          const relative = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+          if (relative < 0) {
+            const impulse = -relative * .86;
+            a.vx -= impulse * nx;
+            a.vy -= impulse * ny;
+            b.vx += impulse * nx;
+            b.vy += impulse * ny;
+          }
+          setSquash(a, Math.atan2(ny, nx), clamp(.38 + Math.abs(relative) / 90, .38, 1));
+          setSquash(b, Math.atan2(ny, nx) + Math.PI, clamp(.38 + Math.abs(relative) / 90, .38, 1));
+        }
+      }
+
+      function update(dt) {
+        const slowDt = Math.min(dt, .032);
+        for (const bubble of bubbles) {
+          if (bubble !== dragging) {
+            bubble.x += bubble.vx * slowDt;
+            bubble.y += bubble.vy * slowDt;
+          }
+
+          const left = bubble.r;
+          const right = width - bubble.r;
+          const top = bubble.r;
+          const bottom = height - bubble.r;
+          if (bubble.x < left) { bubble.x = left; bubble.vx = Math.abs(bubble.vx) * .98; setSquash(bubble, Math.PI, .72); }
+          if (bubble.x > right) { bubble.x = right; bubble.vx = -Math.abs(bubble.vx) * .98; setSquash(bubble, 0, .72); }
+          if (bubble.y < top) { bubble.y = top; bubble.vy = Math.abs(bubble.vy) * .98; setSquash(bubble, -Math.PI / 2, .72); }
+          if (bubble.y > bottom) { bubble.y = bottom; bubble.vy = -Math.abs(bubble.vy) * .98; setSquash(bubble, Math.PI / 2, .72); }
+
+          const maxSpeed = Math.max(28, width * .105);
+          const velocity = Math.hypot(bubble.vx, bubble.vy);
+          if (velocity > maxSpeed) { bubble.vx = bubble.vx / velocity * maxSpeed; bubble.vy = bubble.vy / velocity * maxSpeed; }
+          bubble.squash *= Math.pow(.045, slowDt);
+          if (bubble.squash < .005) bubble.squash = 0;
+        }
+
+        for (let i = 0; i < bubbles.length; i++) {
+          for (let j = i + 1; j < bubbles.length; j++) separateBubbles(bubbles[i], bubbles[j]);
+        }
+        collisionPulse *= Math.pow(.035, slowDt);
+      }
+
+      function drawBackdrop() {
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, 'rgba(12, 45, 79, .78)');
+        gradient.addColorStop(.45, 'rgba(13, 31, 66, .82)');
+        gradient.addColorStop(1, 'rgba(15, 58, 69, .78)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        const ambient = ctx.createRadialGradient(width * .18, height * .15, 0, width * .18, height * .15, width * .7);
+        ambient.addColorStop(0, 'rgba(63, 185, 255, .17)');
+        ambient.addColorStop(.45, 'rgba(56, 128, 238, .04)');
+        ambient.addColorStop(1, 'transparent');
+        ctx.fillStyle = ambient;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.save();
+        ctx.globalAlpha = .26;
+        ctx.strokeStyle = 'rgba(159, 214, 255, .15)';
+        ctx.lineWidth = 1;
+        const grid = Math.max(38, width / 9);
+        for (let x = grid; x < width; x += grid) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke(); }
+        for (let y = grid; y < height; y += grid) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); }
+        ctx.restore();
+      }
+
+      function drawBubble(bubble, time) {
+        const pulse = Math.sin(time * .0012 + bubble.phase) * .018;
+        const scale = 1 + pulse;
+        const squash = bubble.squash;
+        const normalScale = (1 - squash * .21) * scale;
+        const tangentScale = (1 + squash * .17) * scale;
+        const r = bubble.r;
+        const impactAngle = bubble.squashAngle;
+        // Keep the bubble's contents upright. The shell can still become an
+        // ellipse, but its deformation is snapped to a screen axis instead of
+        // rotating the image, highlights, or label with the impact vector.
+        const verticalImpact = Math.abs(Math.sin(impactAngle)) > Math.abs(Math.cos(impactAngle));
+        const bodyScaleX = verticalImpact ? tangentScale : normalScale;
+        const bodyScaleY = verticalImpact ? normalScale : tangentScale;
+
+        // Base body: the collision deformation is applied to the glass shell.
+        ctx.save();
+        ctx.translate(bubble.x, bubble.y);
+        ctx.scale(bodyScaleX, bodyScaleY);
+
+        ctx.shadowColor = bubble.palette.glow;
+        ctx.shadowBlur = 24;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(70, 204, 255, .08)';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = bubble.palette.fill;
+        ctx.fill();
+        ctx.restore();
+
+        // Optional image layer: the clip follows the deformed bubble, but the
+        // image itself is drawn in world coordinates and therefore stays upright.
+        const image = bubble.backgroundImage;
+        if (image && image.complete && image.naturalWidth > 0) {
+          ctx.save();
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.translate(bubble.x, bubble.y);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r * bodyScaleX, r * bodyScaleY, 0, 0, Math.PI * 2);
+          ctx.clip();
+          const imageRatio = image.naturalWidth / image.naturalHeight;
+          const imageBox = r * 2.18;
+          const imageWidth = imageRatio >= 1 ? imageBox * imageRatio : imageBox;
+          const imageHeight = imageRatio >= 1 ? imageBox : imageBox / imageRatio;
+          ctx.globalAlpha = .94;
+          ctx.drawImage(image, -imageWidth / 2, -imageHeight / 2, imageWidth, imageHeight);
+          ctx.globalCompositeOperation = 'source-atop';
+          ctx.globalAlpha = .15;
+          ctx.fillStyle = bubble.palette.fill;
+          ctx.fillRect(-imageWidth / 2, -imageHeight / 2, imageWidth, imageHeight);
+          ctx.restore();
+        }
+
+        // Glass skin: highlights and the rim deform with the shell, while the
+        // image layer above remains visually upright.
+        ctx.save();
+        ctx.translate(bubble.x, bubble.y);
+        ctx.scale(bodyScaleX, bodyScaleY);
+
+        // A monochrome inner wash keeps the default fill and image tint consistent.
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const innerLight = ctx.createLinearGradient(-r, -r, r, r);
+        innerLight.addColorStop(0, 'rgba(255, 255, 255, .22)');
+        innerLight.addColorStop(.36, 'rgba(255, 255, 255, .04)');
+        innerLight.addColorStop(1, 'rgba(0, 20, 70, .13)');
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = innerLight;
+        ctx.fill();
+        ctx.restore();
+
+        const rim = ctx.createLinearGradient(-r, -r, r, r);
+        rim.addColorStop(0, bubble.palette.edge);
+        rim.addColorStop(.32, 'rgba(255,255,255,.52)');
+        rim.addColorStop(.58, 'rgba(162,229,255,.12)');
+        rim.addColorStop(1, bubble.palette.core);
+        ctx.strokeStyle = rim;
+        ctx.lineWidth = Math.max(1.2, r * .035);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const shine = ctx.createRadialGradient(-r * .38, -r * .47, 1, -r * .32, -r * .42, r * .5);
+        shine.addColorStop(0, 'rgba(255,255,255,.84)');
+        shine.addColorStop(.22, 'rgba(236,253,255,.38)');
+        shine.addColorStop(1, 'transparent');
+        ctx.fillStyle = shine;
+        ctx.beginPath();
+        ctx.ellipse(-r * .32, -r * .37, r * .23, r * .1, -.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.56)';
+        ctx.beginPath();
+        ctx.arc(r * .38, -r * .4, Math.max(1.5, r * .045), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = 'rgba(255,255,255,.19)';
+        ctx.lineWidth = Math.max(1, r * .018);
+        ctx.beginPath();
+        ctx.arc(0, 0, r * .82, Math.PI * .65, Math.PI * 1.35);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Keep the game name level and crisp even while the glass body is squashing.
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.translate(bubble.x, bubble.y);
+        ctx.globalCompositeOperation = 'screen';
+        const labelSize = bubble.label.length > 4 ? clamp(r * .25, 11, 17) : clamp(r * .32, 13, 21);
+        ctx.font = `700 ${labelSize}px Inter, "Microsoft YaHei", "PingFang SC", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0, 12, 40, .4)';
+        ctx.shadowBlur = 7;
+        ctx.fillStyle = 'rgba(255, 255, 255, .92)';
+        ctx.fillText(bubble.label, 0, r * .08);
+        ctx.restore();
+      }
+
+      function draw(time = performance.now()) {
+        ctx.clearRect(0, 0, width, height);
+        drawBackdrop();
+        for (const bubble of bubbles) drawBubble(bubble, time);
+        ctx.save();
+        ctx.globalAlpha = .15 + collisionPulse * .15;
+        ctx.strokeStyle = '#a9eeff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(13, 13, width - 26, height - 26);
+        ctx.restore();
+      }
+
+      function frame(now) {
+        const dt = (now - lastFrame) / 1000;
+        lastFrame = now;
+        if (!paused) update(dt);
+        draw(now);
+        requestAnimationFrame(frame);
+      }
+
+      function localPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      }
+
+      function hitTest(point) {
+        for (let i = bubbles.length - 1; i >= 0; i--) {
+          const bubble = bubbles[i];
+          if (Math.hypot(point.x - bubble.x, point.y - bubble.y) <= bubble.r * 1.12) return bubble;
+        }
+        return null;
+      }
+
+      canvas.addEventListener('pointerdown', event => {
+        const point = localPoint(event);
+        const bubble = hitTest(point);
+        if (!bubble) return;
+        dragging = bubble;
+        pointer = { x: point.x, y: point.y, lastX: point.x, lastY: point.y, lastTime: performance.now() };
+        bubble.vx = 0;
+        bubble.vy = 0;
+        canvas.classList.add('is-dragging');
+        canvas.setPointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener('pointermove', event => {
+        if (!dragging) return;
+        const point = localPoint(event);
+        const now = performance.now();
+        const deltaTime = Math.max(8, now - pointer.lastTime);
+        dragging.x = clamp(point.x, dragging.r, width - dragging.r);
+        dragging.y = clamp(point.y, dragging.r, height - dragging.r);
+        dragging.vx = clamp((point.x - pointer.lastX) / deltaTime * 1000, -width * .16, width * .16);
+        dragging.vy = clamp((point.y - pointer.lastY) / deltaTime * 1000, -height * .16, height * .16);
+        pointer.lastX = point.x;
+        pointer.lastY = point.y;
+        pointer.lastTime = now;
+      });
+
+      function release(event) {
+        if (!dragging) return;
+        try { canvas.releasePointerCapture(event.pointerId); } catch (_) {}
+        dragging = null;
+        canvas.classList.remove('is-dragging');
+      }
+      canvas.addEventListener('pointerup', release);
+      canvas.addEventListener('pointercancel', release);
+
+      function updateMetrics() {
+        countText.textContent = `${String(bubbles.length).padStart(2, '0')} objects`;
+        const average = bubbles.length ? bubbles.reduce((sum, b) => sum + Math.hypot(b.vx, b.vy), 0) / bubbles.length : 0;
+        speedText.textContent = average > width * .08 ? 'active drift' : 'slow drift';
+      }
+
+      function togglePause() {
+        paused = !paused;
+        toggleMotion.textContent = paused ? '继续' : '暂停';
+        statusText.textContent = paused ? 'SIMULATION PAUSED' : 'LIVE SIMULATION';
+        document.querySelector('.status-dot').style.background = paused ? '#ffcf7d' : 'var(--mint)';
+      }
+
+      toggleMotion.addEventListener('click', togglePause);
+      resetButton.addEventListener('click', () => { seedBubbles(); paused = false; toggleMotion.textContent = '暂停'; statusText.textContent = 'LIVE SIMULATION'; });
+      addBubble.addEventListener('click', () => {
+        const newIndex = bubbles.length + 1;
+        const newLabel = gameNames[newIndex % gameNames.length];
+        const r = radiusForBoard() * gameSizeScale[newLabel] * random(.78, 1.05);
+        const angle = random(0, Math.PI * 2);
+        const bubble = makeBubble(random(r, width - r), random(r, height - r), Math.cos(angle), Math.sin(angle), newIndex, r / (radiusForBoard() * gameSizeScale[newLabel]));
+        bubbles.push(bubble);
+        // Nudge a new bubble away from existing ones if it spawned inside one.
+        for (let pass = 0; pass < 5; pass++) for (const other of bubbles) if (other !== bubble) separateBubbles(other, bubble, true);
+        updateMetrics();
+      });
+
+      window.addEventListener('keydown', event => {
+        if (event.code === 'Space') { event.preventDefault(); togglePause(); }
+        if (event.key.toLowerCase() === 'r') resetButton.click();
+      });
+
+      const resizeObserver = new ResizeObserver(resize);
+      resizeObserver.observe(wrap);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) lastFrame = performance.now(); });
+      resize();
+      setInterval(updateMetrics, 600);
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
+
