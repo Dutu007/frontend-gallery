@@ -331,7 +331,8 @@
       .page { padding-inline: 14px; }
       header { display: block; }
       .status-pill { margin-top: 20px; }
-      .arena-wrap { min-width: 0; border-radius: 20px; padding: 5px; }
+      .stage, .stage-meta, .arena-wrap, .metrics { width: 100%; min-width: 0; max-width: 100%; }
+      .arena-wrap { border-radius: 20px; padding: 5px; }
       canvas { border-radius: 15px; }
       .metrics { gap: 5px; }
       .metric { padding: 10px 9px; }
@@ -497,13 +498,39 @@
 
       function seedBubbles() {
         bubbles = seeds.map(([x, y, vx, vy, color]) => makeBubble(x * width, y * height, vx, vy, color));
-        // Resolve any seed placement overlap while retaining the intentional composition.
-        for (let pass = 0; pass < 5; pass++) {
+        settleBubbles();
+        updateMetrics();
+      }
+
+      function keepBubbleInside(bubble) {
+        bubble.x = clamp(bubble.x, bubble.r, Math.max(bubble.r, width - bubble.r));
+        bubble.y = clamp(bubble.y, bubble.r, Math.max(bubble.r, height - bubble.r));
+      }
+
+      function settleBubbles(iterations = 80) {
+        if (!bubbles.length) return;
+        for (let pass = 0; pass < iterations; pass++) {
+          let hasOverlap = false;
+          for (const bubble of bubbles) keepBubbleInside(bubble);
           for (let i = 0; i < bubbles.length; i++) {
-            for (let j = i + 1; j < bubbles.length; j++) separateBubbles(bubbles[i], bubbles[j], true);
+            for (let j = i + 1; j < bubbles.length; j++) {
+              const a = bubbles[i];
+              const b = bubbles[j];
+              if (Math.hypot(b.x - a.x, b.y - a.y) < a.r + b.r) hasOverlap = true;
+              separateBubbles(a, b, true);
+            }
+          }
+          for (const bubble of bubbles) keepBubbleInside(bubble);
+          if (!hasOverlap) break;
+          // A very small board may not have enough area for the desktop radii.
+          // Reduce them gradually, then run the separation pass again.
+          if (pass > 0 && pass % 18 === 0) {
+            for (const bubble of bubbles) {
+              bubble.r = Math.max(12, bubble.r * .94);
+              bubble.baseR = bubble.r;
+            }
           }
         }
-        updateMetrics();
       }
 
       function resize() {
@@ -526,6 +553,7 @@
             bubble.r = clamp(bubble.r * ratio, radiusForBoard() * bubble.sizeScale * .76, radiusForBoard() * bubble.sizeScale * 1.16);
             bubble.baseR = bubble.r;
           }
+          settleBubbles();
         }
         sizeText.textContent = `${Math.round(width)} × ${Math.round(height)}`;
         draw();
@@ -593,9 +621,12 @@
           if (bubble.squash < .005) bubble.squash = 0;
         }
 
-        for (let i = 0; i < bubbles.length; i++) {
-          for (let j = i + 1; j < bubbles.length; j++) separateBubbles(bubbles[i], bubbles[j]);
+        for (let pass = 0; pass < 3; pass++) {
+          for (let i = 0; i < bubbles.length; i++) {
+            for (let j = i + 1; j < bubbles.length; j++) separateBubbles(bubbles[i], bubbles[j]);
+          }
         }
+        for (const bubble of bubbles) keepBubbleInside(bubble);
         collisionPulse *= Math.pow(.035, slowDt);
       }
 
@@ -839,8 +870,7 @@
         const angle = random(0, Math.PI * 2);
         const bubble = makeBubble(random(r, width - r), random(r, height - r), Math.cos(angle), Math.sin(angle), newIndex, r / (radiusForBoard() * gameSizeScale[newLabel]));
         bubbles.push(bubble);
-        // Nudge a new bubble away from existing ones if it spawned inside one.
-        for (let pass = 0; pass < 5; pass++) for (const other of bubbles) if (other !== bubble) separateBubbles(other, bubble, true);
+        settleBubbles();
         updateMetrics();
       });
 
