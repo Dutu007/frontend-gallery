@@ -1,6 +1,6 @@
 # Frontend Gallery · 交互式前端设计集
 
-![Bubble Orbit preview](./assets/bubble-orbit-preview.png)
+![Bubble Orbit preview](./assets/bubble-orbit-preview.svg)
 
 这里收集我的交互式前端实验与游戏化界面设计。每个作品都尽量保持独立，可单独打开，也可以通过总览页浏览。
 
