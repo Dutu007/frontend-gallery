@@ -13,7 +13,7 @@
 <circle cx="1270" cy="80" r="220" fill="#8d5be1" opacity=".15" filter="url(#blur)"/>
 <text x="78" y="72" fill="#76eaff" font-family="Arial,Microsoft YaHei,sans-serif" font-size="14" font-weight="700" letter-spacing="3">INTERACTIVE PHYSICS PLAYGROUND</text>
 <text x="78" y="160" fill="#fff" font-family="Arial,Microsoft YaHei,sans-serif" font-size="68" font-weight="700">玻璃气泡</text>
-<text x="78" y="232" fill="url(#headline)" font-family="Arial,Microsoft YaHei,sans-serif" font-size="68" font-weight="700">自由漂浮，彼此弹开。</text>
+<text x="78" y="232" fill="url(#headline)" font-family="Arial,Microsoft YaHei,sans-serif" font-size="68" font-weight="700" textLength="620" lengthAdjust="spacingAndGlyphs">自由漂浮，彼此弹开。</text>
 <text x="80" y="286" fill="#a6bbd5" font-family="Arial,Microsoft YaHei,sans-serif" font-size="16">慢速漂移 · 软碰撞 · 玻璃质感 · 可拖拽游戏气泡</text>
 <rect x="72" y="430" width="350" height="1" fill="#9bdcff" opacity=".22"/>
 <text x="72" y="390" fill="#eff8ff" font-family="Arial,sans-serif" font-size="24" font-weight="700">Lightweight motion, soft</text>
